@@ -47,7 +47,7 @@ int main(int argc,char **argv)
 	/*
 	 ** Input argument variables and control.
 	 */
-	int bTau,bCvg,bScoop,nSmooth,nMembers,bNoUnbind,bUnbindOnly,iSoftType;
+	int bTau,bCvg,bScoop,nSmooth,nMembers,bNoUnbind,bUnbindOnly,iSoftType,bCkpnt;
 	int bEps,bOutRay,bOutDens,bGasAndDark,bGasOnly,bOutStats,bForceInitialCut;
 	int nMaxMembers;
 	int bPeriodic;
@@ -78,7 +78,7 @@ int main(int argc,char **argv)
 
 	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
 
-	printf("SKID v1.4.1: Joachim Stadel, Dec. 2000\n");
+	printf("SPH_RSMPL: Rok Roskar 2009/2010 - based entirely on SKID by Joachim Stadel\n");
 	/*
 	 ** Bucket size set to 16, user cannot affect this!
 	 */
@@ -305,7 +305,7 @@ int main(int argc,char **argv)
 		else if (!strcmp(argv[i],"-cz")) {
 			++i;
 			if (i >= argc) usage();
-		    fCenter[2] = atof(argv[i]);
+			fCenter[2] = atof(argv[i]);
 			++i;
 			}
 		else if (!strcmp(argv[i],"-o")) {
@@ -327,7 +327,7 @@ int main(int argc,char **argv)
 			++i;
 			}
 		else if (!strcmp(argv[i],"-diag")) {
-			bOutDiag = 1;
+		        bOutDiag = 1;
 			++i;
 			}
 		else if (!strcmp(argv[i],"-std")) {
@@ -344,6 +344,11 @@ int main(int argc,char **argv)
 		  ++i;
 		  if (i >= argc) usage();
 		  radius = atof(argv[i]);
+		  ++i;
+		}
+		else if (!strcmp(argv[i], "-ckpnt")) {
+		  ++i;
+		  bCkpnt = 1;
 		  ++i;
 		}
 
@@ -365,38 +370,8 @@ int main(int argc,char **argv)
 	//kdInit(&kds_old,nBucket,fPeriod,fCenter,bOutDiag);
 	kdInit(&kdd,nBucket,fPeriod,fCenter,bOutDiag);
 
-#ifdef READ_CHECKPOINT
-	header = kdReadTipsyCheckpoint(kdg, kds, kdd, stdin);
-	
-#else 
-	kdReadTipsy(kd,stdin);
-#endif
-	/* if (bUnbindOnly) { */
-/* 		/\* */
-/* 		 ** to provide compatibility with v1.2 skid we need to strip off */
-/* 		 ** the .grp extension if it is specified. */
-/* 		 *\/ */
-/* 		iExt = strlen(achGroup) - 4; */
-/* 		if (iExt < 0) iExt = 0; */
-/* 		if (!strcmp(&achGroup[iExt],".grp")) { */
-/* 			/\* */
-/* 			 ** The extension was provided, so remove it. */
-/* 			 *\/ */
-/* 			achGroup[iExt] = 0;  */
-/* 			} */
-/* 		strcpy(achFile,achGroup); */
-/* 		strcat(achFile,".grp"); */
-/* 		kdInGroup(kd,achFile); */
-/* 		/\* */
-/* 		 ** Check and see if there exists a .gtp file with the right name. */
-/* 		 *\/ */
-/* 		strcpy(achFile,achGroup); */
-/* 		strcat(achFile,".gtp"); */
-/* 		kdInitpGroup(kd); */
-/* 		kdReadCenter(kd,achFile, bStandard); */
-/* 		goto UnbindOnly; */
-/* 		} */
-	//kdScatterActive(kd,bGasAndDark,bGasOnly);
+	if(bCkpnt) header = kdReadTipsyCheckpoint(kdg, kds, kdd, stdin);
+	//else kdReadTipsy(kd,stdin);
 
 	/*
 	** Split the gas
@@ -453,13 +428,13 @@ int main(int argc,char **argv)
 	strcpy(achFile, achName);
 	strcat(achFile, ".subsample.chk");
 	
-	kdWriteTipsyCheckpoint(kdg, kdd, kds, header, achFile, radius);
+	if (bCkpnt) kdWriteTipsyCheckpoint(kdg, kdd, kds, header, achFile, radius);
 
 	fflush(stdout);
 	kdFinish(kdg);
 	kdFinish(kds);
 	kdFinish(kdd);
 	return 0;
-	}
+}
 	
 

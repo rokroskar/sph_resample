@@ -11,14 +11,13 @@ CC=gcc
 CFLAGS = -g -DREAD_CHECKPOINT
 LIBS	=   -lm
 
-default:	skid totipnat
-	@echo To try the demo, type demo!
+default: sph_rsmpl 
 
 clean:
 	rm -f *.o
 
-skid_mod: main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o
-	$(CC) $(CFLAGS) -o skid_mod main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o $(LIBS)
+sph_rsmpl: main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o
+	$(CC) $(CFLAGS) -o sph_rsmpl main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o $(LIBS)
 
 main.o: main.c kd.h smooth1.h cosmo.h
 
@@ -28,10 +27,3 @@ smooth1.o: smooth1.c kd.h smooth1.h cosmo.h
 
 grav.o: grav.c grav.h kd.h cosmo.h
 
-#
-#	May need to specify -lrpc on some systems
-#
-totipnat: totipnat.o
-	$(CC) $(CFLAGS) -o totipnat totipnat.o $(LIBS)
-
-totipnat.o: tipsydefs.h
