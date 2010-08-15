@@ -860,8 +860,8 @@ int ScatterCriterion(KD kd, int pi, float radius)
 
 
 
-int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius)
-//		   float Lc, float alpha)
+int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius,
+		   float Lc, float alpha)
 {
   /* 
    * Initialize the child particles based on parent particle properties
@@ -869,7 +869,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 
         int pi,nCnt,j, nPart;
 	float fCvg2;
-	float xcurr, ycurr, zcurr, bs;
+	float xcurr, ycurr, zcurr, bs, currSplit, jx, jy, jz, jtot;
 	PINIT *p;
 	PMOVE *pm;
 	
@@ -891,8 +891,8 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 	nPart = 0;
 
 	
-	/* if (Lc == 0) */
-/* 	  { */
+	if (Lc == 0)
+	  {
 	    for (pi=0; pi<kd->nParticles;++pi) 
 	      {
 		xcurr = p[pi].r[0];
@@ -907,17 +907,25 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 	      }
 	    fprintf(stderr, "nPart = %d\n", nPart);
 	    kd->nMove = nPart*nSplitting;
-/* 	  } */
-/* 	else  */
-/* 	  { */
-/* 	    for (pi=0; pi<kd->nParticles;++pi) */
-/* 	      { */
-/* 		j = sqrt((p[pi].r[1]*p[pi].v[2] - p[pi].r[2]*p[pi].v[1])^2 + */
-/* 			 (p[pi].r[3]*p[pi].v[0] - p[pi].r[0]*p[pi].v[3])^2 + */
-/* 			 (p[pi].r[0]*p[pi].v[1] - p[pi].r[1]*p[pi].v[0])^2); */
-		
-		
-	
+	  }
+	else
+	  {
+	    for (pi=0; pi<kd->nParticles;++pi)
+	      {
+		if(p[pi].fTimeForm >= 0.0) 
+		  {
+		    jx = p[pi].r[1]*p[pi].v[2] - p[pi].r[2]*p[pi].v[1];
+		    jy = p[pi].r[2]*p[pi].v[0] - p[pi].r[0]*p[pi].v[2];
+		    jz = p[pi].r[0]*p[pi].v[1] - p[pi].r[1]*p[pi].v[0];
+
+		    jtot = sqrt(jx*jx+jy*jy+jz*jz);
+		    nPart += (int)ceill((float)nSplitting/(1+jtot/Lc));
+		  }
+	      }
+	    fprintf(stderr, "nPart = %d\n", nPart);
+	    kd->nMove = nPart;
+	  }
+			
 	kd->nActive = kd->nMove;
 	
 	/*
@@ -944,11 +952,28 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 	    zcurr = p[pi].r[2];
 
 	    bs = sqrt(p[pi].fBall2)/2.0;
-	    
-	    if (((xcurr*xcurr + ycurr*ycurr + zcurr*zcurr) < radius*radius) &&
-	      p[pi].fTimeForm >= 0.0)
+	    currSplit = 0;
+
+	    /* check if we are splitting by angular momentum or radius */
+	    if (Lc > 0) 
 	      {
-		for (j=0; j < nSplitting; j++) 
+		jx = p[pi].r[1]*p[pi].v[2] - p[pi].r[2]*p[pi].v[1];
+		jy = p[pi].r[2]*p[pi].v[0] - p[pi].r[0]*p[pi].v[2];
+		jz = p[pi].r[0]*p[pi].v[1] - p[pi].r[1]*p[pi].v[0];
+		
+		jtot = sqrt(jx*jx+jy*jy+jz*jz);
+		currSplit = ceilf((int)nSplitting/(1.0+jtot/Lc));
+		if (currSplit < 1) fprintf(stderr,"wtf mate\n");
+		//fprintf(stderr, "j = %f\ncurrSplit = %f\n", j, currSplit);
+	      }
+	    else currSplit = nSplitting;
+	    
+	    assert(currSplit > 0);
+
+	    if ((((xcurr*xcurr + ycurr*ycurr + zcurr*zcurr) < radius*radius) || Lc > 0) 
+		&& p[pi].fTimeForm >= 0.0)
+	      {
+		for (j=0; j < (int)currSplit; j++) 
 		  {
 		    pm[nCnt].r[0] = xcurr + (float)rand()/(float)RAND_MAX*bs*2.0 - bs;
 		    pm[nCnt].r[1] = ycurr + (float)rand()/(float)RAND_MAX*bs*2.0 - bs;
@@ -959,8 +984,8 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 		    pm[nCnt].v[1] = p[pi].v[1];
 		    pm[nCnt].v[2] = p[pi].v[2];
 		    
-		    pm[nCnt].fMass = p[pi].fMass/(float)nSplitting;
-		    pm[nCnt].fSoft = p[pi].fSoft/sqrt(nSplitting);
+		    pm[nCnt].fMass = p[pi].fMass/(float)currSplit;
+		    pm[nCnt].fSoft = p[pi].fSoft/sqrt(currSplit);
 		    assert(pm[nCnt].fSoft != 0.0);
 		    pm[nCnt].iOrder = nCnt + offset;
 		    		    
@@ -975,7 +1000,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 		    
 		    pm[nCnt].fTemp = p[pi].fTemp;
 		    pm[nCnt].fDensity = p[pi].fDensity;
-		    pm[nCnt].fMetals = p[pi].fMetals/nSplitting;
+		    pm[nCnt].fMetals = p[pi].fMetals/currSplit;
 		    pm[nCnt].fMFracOxygen = p[pi].fMFracOxygen;
 		    pm[nCnt].fMFracIron = p[pi].fMFracIron;
 		    
@@ -990,7 +1015,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 
 		    pm[nCnt].fTimeCoolIsOffUntil = p[pi].fTimeCoolIsOffUntil;
 		    pm[nCnt].fTimeForm = p[pi].fTimeForm;
-		    pm[nCnt].fMassForm = p[pi].fMassForm/nSplitting;
+		    pm[nCnt].fMassForm = p[pi].fMassForm/currSplit;
 		    
 		    nCnt++;
 		  }
@@ -999,6 +1024,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 	  }
 	if (kd->bOutDiag) puts("<< kdInitResample()");
 	fflush(stdout);
+	fprintf(stderr, "total number of children = %d\n", nCnt);
 	return(kd->nActive);
 }
 

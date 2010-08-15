@@ -472,7 +472,7 @@ int kdReadTipsy(KD,FILE *,int);
 int kdBuildTree(KD);
 int kdBuildMoveTree(KD);
 int kdInitMove(KD,float,float,float,float,int,int);
-int kdInitResample(KD, int, int, int, float);
+int kdInitResample(KD, int, int, int, float, float, float);
 int kdScatterActive(KD,float);
 int bAllowInitialCut(KD);
 void kdMoveParticles(KD,float);

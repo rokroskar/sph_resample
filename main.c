@@ -51,7 +51,7 @@ int main(int argc,char **argv)
 
 	int nSplitting;
 	CHK_HEADER header;
-	float radius;
+	float radius, Lc = 0.0, alpha = 1.0;
 
 	feenableexcept(FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
 
@@ -113,6 +113,18 @@ int main(int argc,char **argv)
 		  radius = atof(argv[i]);
 		  ++i;
 		}
+		else if (!strcmp(argv[i],"-Lc")) {
+		  ++i;
+		  if (i >= argc) usage();
+		  Lc = atof(argv[i]);
+		  ++i;
+		}
+		else if (!strcmp(argv[i],"-alpha")) {
+		  ++i;
+		  if (i >= argc) usage();
+		  alpha = atof(argv[i]);
+		  ++i;
+		}
 		else if (!strcmp(argv[i], "-ckpnt")) {
 		  bCkpnt = 1;
 		  ++i;
@@ -148,7 +160,7 @@ int main(int argc,char **argv)
 	kdTime(kdg,&sec1,&usec1);
 	smDensityInit(smx,bPeriodic);
 	kdTime(kdg,&sec1,&usec1);
-	kdInitResample(kdg, nSplitting, 0, 0, radius);
+	kdInitResample(kdg, nSplitting, 0, 0, radius, Lc, alpha);
 	kdBuildMoveTree(kdg);
 	smTemperature(smx);
 	smFinish(smx);
@@ -173,7 +185,7 @@ int main(int argc,char **argv)
 	kdTime(kds,&sec1,&usec1);
 	smDensityInit(smx,bPeriodic);
 	kdTime(kds,&sec1,&usec1);
-	kdInitResample(kds, nSplitting, kdg->nMove + kdd->nParticles, 1, radius);
+	kdInitResample(kds, nSplitting, kdg->nMove + kdd->nParticles, 1, radius, Lc, alpha);
 	kdBuildMoveTree(kds);
 	smTemperature(smx);
 	smFinish(smx);
