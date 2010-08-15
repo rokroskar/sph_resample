@@ -16,14 +16,13 @@ default: sph_rsmpl
 clean:
 	rm -f *.o
 
-sph_rsmpl: main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o
-	$(CC) $(CFLAGS) -o sph_rsmpl main.o kd.o smooth1.o grav.o cosmo.o romberg.o runge.o $(LIBS)
+sph_rsmpl: main.o kd.o smooth1.o 
+	$(CC) $(CFLAGS) -o sph_rsmpl main.o kd.o smooth1.o $(LIBS)
 
-main.o: main.c kd.h smooth1.h cosmo.h
+main.o: main.c kd.h smooth1.h 
 
-kd.o: kd.c kd.h tipsydefs.h cosmo.h
+kd.o: kd.c kd.h tipsydefs.h 
 
-smooth1.o: smooth1.c kd.h smooth1.h cosmo.h
+smooth1.o: smooth1.c kd.h smooth1.h
 
-grav.o: grav.c grav.h kd.h cosmo.h
 

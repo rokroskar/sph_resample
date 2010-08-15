@@ -465,7 +465,7 @@ void kdSetSoft(KD,float);
 void kdSetUniverse(KD,float,float,float,float,float,float);
 int kdParticleType(KD,int);
 #ifdef READ_CHECKPOINT
-struct chkHeader kdReadTipsyCheckpoint(KD, KD, KD, FILE *);
+struct chkHeader kdReadTipsyCheckpoint(KD, KD, KD, FILE *, int);
 #else
 int kdReadTipsy(KD,FILE *,int);
 #endif
