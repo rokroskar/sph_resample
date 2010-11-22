@@ -25,7 +25,6 @@
 #define SPLINE		2
 
 
-#ifdef READ_CHECKPOINT
 
 typedef struct CoolingParticleStruct {
   double Y_HI,Y_HeI,Y_HeII;        /* Abundance of ions */
@@ -125,46 +124,41 @@ typedef struct pMoved {
 } PMOVE;
 
 
+/* typedef struct pInitial { */
+/* 	float r[3]; */
+/* 	float v[3]; */
+/* 	float fMass; */
+/* 	float fSoft; */
+/* 	float fTemp; */
+/* 	float fBall2; */
+/* 	float fDensity; */
+/*         float fMetals; */
+/* 	int iOrder; */
+/* } PINIT; */
 
-#else
-
-typedef struct pInitial {
-	float r[3];
-	float v[3];
-	float fMass;
-	float fSoft;
-	float fTemp;
-	float fBall2;
-	float fDensity;
-        float fMetals;
-	int iOrder;
-	} PINIT;
+/* /\* typedef struct pMoved { *\/ */
+/* /\* 	float r[3]; *\/ */
+/* /\* 	float rOld[3]; *\/ */
+/* /\* 	float a[3]; *\/ */
+/* /\* 	int iOrder; *\/ */
+/* /\* 	} PMOVE; *\/ */
 
 /* typedef struct pMoved { */
 /* 	float r[3]; */
-/* 	float rOld[3]; */
-/* 	float a[3]; */
+/* 	float v[3]; */
+/* 	float fMass; */
+/* 	float fSoft; */
+/* 	float fTemp; */
+/* 	float fBall2; */
+/* 	float fDensity; */
+/*         float fWeights; */
+/*         float fMetals; */
 /* 	int iOrder; */
+/*         int iParentOrder; */
+/*         float rOld[3]; */
+/*         float a[3]; */
 /* 	} PMOVE; */
 
-typedef struct pMoved {
-	float r[3];
-	float v[3];
-	float fMass;
-	float fSoft;
-	float fTemp;
-	float fBall2;
-	float fDensity;
-        float fWeights;
-        float fMetals;
-	int iOrder;
-        int iParentOrder;
-        float rOld[3];
-        float a[3];
-	} PMOVE;
-
-
-#endif
 
 typedef struct pGroup {
 	float rel[3];
@@ -464,11 +458,9 @@ int kdInit(KD *,int,float *,float *,int);
 void kdSetSoft(KD,float);
 void kdSetUniverse(KD,float,float,float,float,float,float);
 int kdParticleType(KD,int);
-#ifdef READ_CHECKPOINT
 struct chkHeader kdReadTipsyCheckpoint(KD, KD, KD, FILE *, int);
-#else
-int kdReadTipsy(KD,FILE *,int);
-#endif
+void kdcofm(KD, KD, KD, int);
+int kdReadTipsy(KD, KD, KD, FILE *,int,int);
 int kdBuildTree(KD);
 int kdBuildMoveTree(KD);
 int kdInitMove(KD,float,float,float,float,int,int);
@@ -494,7 +486,7 @@ void kdOutStats(KD kd,char *,float,float);
 void kdFinish(KD);
 void kdOutTemperature(KD, char *);
 void kdWriteTipsyStd(KD, KD, KD, char *, float, int);
-void kdWriteTipsyCheckpoint(KD, KD, KD, CHK_HEADER, char *, float);
+void kdWriteTipsyCheckpoint(KD, KD, KD, struct chkHeader, char *, float);
 void kdSetIord(KD, KD, KD, float);
 void kdWriteMovedParticle(CHK_PART *, int, PMOVE);
 void kdWriteInitParticle(CHK_PART *, int, PINIT);

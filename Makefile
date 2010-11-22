@@ -8,7 +8,7 @@ CC=gcc
 #CFLAGS	=	-O2
 #Following added for gcc
 #CFLAGS = -O3 -funroll-loops
-CFLAGS = -g -DREAD_CHECKPOINT
+CFLAGS = -g 
 LIBS	=   -lm
 
 default: sph_rsmpl 

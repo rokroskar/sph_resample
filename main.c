@@ -17,8 +17,9 @@ void usage(void)
 {
 	fprintf(stderr,"USAGE:\n");
 	fprintf(stderr,"sph_rsmpl -nSplitting <N> -radius <R> -s <nSmooth> INPUT_FILE \n");
-	fprintf(stderr,"	 reads TIPSY CHECKPOINT input file from stdin\n");
+	fprintf(stderr,"	 reads TIPSY standard or checkpoint file from stdin\n");
 	fprintf(stderr,"-diag : print diagnostic output\n");
+	fprintf(stderr,"-smbh : this is a run with SMBHs (applies to determining com)\n");
 	fprintf(stderr,"OUTPUT filenames are \n");
 	fprintf(stderr,"\t INPUT_FILE.subsample.tipsy and \n");
 	fprintf(stderr,"\t INPUT_FILE.subsample.chk\n");
@@ -32,7 +33,7 @@ int main(int argc,char **argv)
 	/*
 	 ** Input argument variables and control.
 	 */
-	int nSmooth,bCkpnt, bSmbh;
+	int nSmooth,bCkpnt=0, bSmbh;
 	int nMaxMembers;
 	int bPeriodic;
 	int bStandard;
@@ -85,7 +86,9 @@ int main(int argc,char **argv)
 	/*
 	 ** Now get the command line arguments!
 	 */
-	i = 1;
+	
+	if (argc == 1) usage();
+	
 	while (i < argc) {
 	        if (!strcmp(argv[i],"-s")) {
 			++i;
@@ -136,18 +139,19 @@ int main(int argc,char **argv)
 		}
 		
 		else usage();
-		}
+	}
 
 	/* 
 	** Initialize a KD context for each type of particle
 	*/
-	
+
 	kdInit(&kdg,nBucket,fPeriod,fCenter,bOutDiag);
 	kdInit(&kds,nBucket,fPeriod,fCenter,bOutDiag);
 	//kdInit(&kds_old,nBucket,fPeriod,fCenter,bOutDiag);
 	kdInit(&kdd,nBucket,fPeriod,fCenter,bOutDiag);
 
 	if(bCkpnt) header = kdReadTipsyCheckpoint(kdg, kds, kdd, stdin, bSmbh);
+	else       kdReadTipsy(kdg, kds, kdd, stdin, 1, bSmbh);
 	//else kdReadTipsy(kd,stdin);
 
 	/*
@@ -169,8 +173,9 @@ int main(int argc,char **argv)
 	/*
 	** We don't split the dark, but only set the active particles
 	*/
-	
-	kdScatterActive(kdd, radius);
+
+	if(kdd->nParticles > 0)
+	  kdScatterActive(kdd, radius);
 
 
 	/*
@@ -179,16 +184,20 @@ int main(int argc,char **argv)
 
 	// first, separate out the stars we don't want to split
 
-	kdScatterActive(kds,radius);
-	kdBuildTree(kds);
-	smInit(&smx,kds,nSmooth);
-	kdTime(kds,&sec1,&usec1);
-	smDensityInit(smx,bPeriodic);
-	kdTime(kds,&sec1,&usec1);
-	kdInitResample(kds, nSplitting, kdg->nMove + kdd->nParticles, 1, radius, Lc, alpha);
-	kdBuildMoveTree(kds);
-	smTemperature(smx);
-	smFinish(smx);
+	if(kds->nParticles > 0) {
+	  
+	  kdScatterActive(kds,radius);
+	  kdBuildTree(kds);
+	  smInit(&smx,kds,nSmooth);
+	  kdTime(kds,&sec1,&usec1);
+	  smDensityInit(smx,bPeriodic);
+	  kdTime(kds,&sec1,&usec1);
+	  kdInitResample(kds, nSplitting, kdg->nMove + kdd->nParticles, 1, radius, Lc, alpha);
+	  kdBuildMoveTree(kds);
+	  smTemperature(smx);
+	  smFinish(smx);
+
+	}
 
 	/* strcpy(achFile, achName); */
 /* 	strcat(achFile, ".temps"); */
@@ -206,6 +215,7 @@ int main(int argc,char **argv)
 	strcat(achFile, ".subsample.chk");
 	
 	if (bCkpnt) kdWriteTipsyCheckpoint(kdg, kdd, kds, header, achFile, radius);
+	
 
 	fflush(stdout);
 	kdFinish(kdg);

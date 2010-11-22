@@ -98,9 +98,9 @@ int kdParticleType(KD kd,int iOrder)
 	}
 
 
-int kdReadTipsy(KD kd,FILE *fp, int bStandard)
+int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
 {
-	PINIT *p;
+        PINIT *pg, *pd, *ps;
 	int i,j;
 	struct dump h;
 	struct gas_particle gp;
@@ -108,7 +108,7 @@ int kdReadTipsy(KD kd,FILE *fp, int bStandard)
 	struct star_particle sp;
 	XDR xdrs;
 
-	if (kd->bOutDiag) puts(">> kdReadTipsy()");
+	if (kdg->bOutDiag) puts(">> kdReadTipsy()");
 	fflush(stdout);
 	if (bStandard) {
 	    assert(sizeof(Real)==sizeof(float)); /* Otherwise, this XDR stuff
@@ -119,96 +119,134 @@ int kdReadTipsy(KD kd,FILE *fp, int bStandard)
 	else {
 	    fread(&h,sizeof(struct dump),1,fp);
 	    }
-	kd->inType = 0;
-	kd->nDark = h.ndark;
-	if (kd->nDark) kd->inType |= DARK;
-	kd->nGas = h.nsph;
-	if (kd->nGas) kd->inType |= GAS;
-	kd->nStar = h.nstar;
-	if (kd->nStar) kd->inType |= STAR;
-	kd->fTime = h.time;
-	//kd->nParticles = kd->nDark + kd->nGas + kd->nStar;
-	kd->nParticles = kd->nGas;
-	kd->nInitActive = kd->nParticles;
-	/*
-	 ** Allocate arrays.
-	 */
+
+	/* 
+	** Initialize and allocate arrays for the gas kd
+	*/
+
+	kdg->nDark = h.ndark;
+	kdg->nGas = h.nsph;
+	kdg->nStar = h.nstar;
+	kdg->fTime = h.time;
+	kdg->inType = GAS;
+
+	kdg->nParticles = kdg->nGas;   // ONLY CONSIDERING GAS IN THIS CASE
+	kdg->nInitActive = kdg->nParticles; 
 	
-	kd->pInit = (PINIT *)malloc(kd->nParticles*sizeof(PINIT));
-	assert(kd->pInit != NULL);
-	printf("nDark:%d nGas:%d nStar:%d\n",kd->nDark,kd->nGas,kd->nStar);
+	kdg->pInit = (PINIT *)malloc(kdg->nParticles*sizeof(PINIT));
+	assert(kdg->pInit != NULL);
+	
+	/* 
+	** Initialize and allocate arrays for the dark matter kd
+	*/
+
+	kdd->nDark = h.ndark;
+	kdd->nGas = h.nsph;
+	kdd->nStar = h.nstar;
+	kdd->fTime = h.time;
+	kdd->inType = DARK;
+	
+	kdd->nParticles = kdd->nDark;   // ONLY CONSIDERING DM IN THIS CASE
+	kdd->nInitActive = kdd->nParticles; 
+	
+	kdd->pInit = (PINIT *)malloc(kdd->nParticles*sizeof(PINIT));
+	assert(kdd->pInit != NULL);
+	
+	/* 
+	** Initialize and allocate arrays for the stars kd
+	*/
+	
+	kds->nDark = h.ndark;
+	kds->nGas = h.nsph;
+	kds->nStar = h.nstar;
+	kds->fTime = h.time;
+	kds->inType = STAR;
+	
+	kds->nParticles = kds->nStar;   // ONLY CONSIDERING STARS IN THIS CASE
+	kds->nInitActive = kds->nParticles; 
+	
+	kds->pInit = (PINIT *)malloc(kds->nParticles*sizeof(PINIT));
+	assert(kds->pInit != NULL);
+	
+	
+	printf("nDark:%d nGas:%d nStar:%d\n",kdg->nDark,kdg->nGas,kdg->nStar);
 	fflush(stdout);
-	p = kd->pInit;
+	
+	pg = kdg->pInit;
+	ps = kds->pInit;
+	pd = kdd->pInit;
+  
+
 	/*
 	 ** Read Stuff!
 	 */
 	//for (i=0;i<kd->nParticles;++i) {
 	// only read in the gas
-	for(i=0;i<kd->nGas;i++){
-		p[i].iOrder = i;
-		p[i].fDensity = 0.0;
-		switch (kdParticleType(kd,i)) {
-		case (GAS):
-			if (bStandard) {
-			    xdr_vector(&xdrs, (char *) &gp, 12,
-				       sizeof(Real), (xdrproc_t) xdr_float);
-			    }
-			else {
-			    fread(&gp,sizeof(struct gas_particle),1,fp);
-			    }
-			p[i].fMass = gp.mass;
-			p[i].fSoft = gp.hsmooth;
-			p[i].fTemp = gp.temp;
-			p[i].fMetals = gp.metals;
-			for (j=0;j<3;++j) {
-				p[i].r[j] = gp.pos[j];
-				p[i].v[j] = gp.vel[j];
-				}
-			
-
-			break;
-		case (DARK):
-			if (bStandard) {
-			    xdr_vector(&xdrs, (char *) &dp, 9,
-				       sizeof(Real), (xdrproc_t) xdr_float);
-			    }
-			else {
-			    fread(&dp,sizeof(struct dark_particle),1,fp);
-			    }
-			p[i].fMass = dp.mass;
-			p[i].fSoft = dp.eps;
-			p[i].fTemp = 0.0;
-			for (j=0;j<3;++j) {
-				p[i].r[j] = dp.pos[j];
-				p[i].v[j] = dp.vel[j];
-				}
-			break;
-		case (STAR):
-			if (bStandard) {
-			    xdr_vector(&xdrs, (char *) &sp, 11,
-				       sizeof(Real), (xdrproc_t) xdr_float);
-			    }
-			else {
-			    fread(&sp,sizeof(struct star_particle),1,fp);
-			    }
-			p[i].fMass = sp.mass;
-			p[i].fSoft = sp.eps;
-			p[i].fTemp = 0.0;
-			for (j=0;j<3;++j) {
-				p[i].r[j] = sp.pos[j];
-				p[i].v[j] = sp.vel[j];
-				}
-			break;
-			}
-		}
-	if (bStandard) xdr_destroy(&xdrs);
-	if (kd->bOutDiag) puts("<< kdReadTipsy()");
-	fflush(stdout);
-	return(kd->nParticles);
+	for(i=0;i<kdg->nParticles;i++){
+	  pg[i].iOrder = i;
+	  pg[i].fDensity = 0.0;
+	  if (bStandard) {
+	    xdr_vector(&xdrs, (char *) &gp, 12,
+		       sizeof(Real), (xdrproc_t) xdr_float);
+	  }
+	  else {
+	    fread(&gp,sizeof(struct gas_particle),1,fp);
+	  }
+	  pg[i].fMass = gp.mass;
+	  pg[i].fSoft = gp.hsmooth;
+	  pg[i].fTemp = gp.temp;
+	  pg[i].fMetals = gp.metals;
+	  for (j=0;j<3;++j) {
+	    pg[i].r[j] = gp.pos[j];
+	    pg[i].v[j] = gp.vel[j];
+	  }
+	  
 	}
 
+	for(i=0;i<kdd->nParticles;i++){
+	  if (bStandard) {
+	    xdr_vector(&xdrs, (char *) &dp, 9,
+		       sizeof(Real), (xdrproc_t) xdr_float);
+	  }
+	  else {
+	    fread(&dp,sizeof(struct dark_particle),1,fp);
+	  }
+	  pd[i].fMass = dp.mass;
+	  pd[i].fSoft = dp.eps;
+	  pd[i].fTemp = 0.0;
+	  for (j=0;j<3;++j) {
+	    pd[i].r[j] = dp.pos[j];
+	    pd[i].v[j] = dp.vel[j];
+	  }
+	}
+	
+	for(i=0;i<kds->nParticles;i++){
+	  if (bStandard) {
+	    xdr_vector(&xdrs, (char *) &sp, 11,
+		       sizeof(Real), (xdrproc_t) xdr_float);
+	  }
+	  else {
+	    fread(&sp,sizeof(struct star_particle),1,fp);
+	  }
+	  ps[i].fMass = sp.mass;
+	  ps[i].fSoft = sp.eps;
+	  ps[i].fTemp = 0.0;
+	  for (j=0;j<3;++j) {
+	    ps[i].r[j] = sp.pos[j];
+	    ps[i].v[j] = sp.vel[j];
+	  }
+	}
+	
+	if (bStandard) xdr_destroy(&xdrs);
+	
+	kdcofm(kdg, kdd, kds, bSmbh);
+	
+	if (kdg->bOutDiag) puts("<< kdReadTipsy()");
+	fflush(stdout);
+	return(kdg->nParticles);
+}
 
-#ifdef READ_CHECKPOINT
+
 struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSmbh)
 {
 
@@ -219,8 +257,7 @@ struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSm
   long offset;
   char name[100],fdlname[500],c[10000];
   FILE *IN, *FDL, *OUT;
-  float comr[3], comv[3];
-  double totmass = 0.0;
+ 
   
   if (kdg->bOutDiag) puts(">> kdReadTipsyCheckpoint()");
   fflush(stdout);
@@ -409,34 +446,45 @@ struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSm
     ps[i].iGasOrder = cp.iGasOrder;
 
     
-    /* p[i].fTemp = cp.u*(GCGS*2.3e5*MSOLG)/(1.0*KPCCM)/	     \ */
-/* 		       (2*(1.-0.25) - cp.CoolParticle.Y_HI + \ */
-/* 			3*0.25/4.0 - 2*cp.CoolParticle.Y_HeI - cp.CoolParticle.Y_HeII \ */
-/* 			* Rgas * 1.5); */
-
-    //ps[i].fTemp = cp.u*1.5*GCGS*2.3e5*MSOLG/(1.0*KPCCM)*1.38e-16;
-
     for (j = 0; j <= 2; j++) {
       ps[i].r[j] = cp.r[j];
       ps[i].v[j] = cp.v[j];
     }
 
   }
+  
+  kdcofm(kdg, kdd, kds, bSmbh);
+
+  if(kdg->bOutDiag) puts("<< kdReadTipsyCheckpoint()");
+  fflush(stdout);
+
+  return(h);
+}
+
+void kdcofm(KD kdg, KD kdd, KD kds, int bSmbh)
+{
 
    /*
    ** Center the particle positions and velocities based on the 
    ** center of mass -> take the center between the two BHs and center all particles
    */
+  PINIT *pg, *pd, *ps;
+  float comr[3], comv[3];
+  double totmass = 0.0;
+  int i, j;
+
+  pg = kdg->pInit;
+  pd = kdd->pInit;
+  ps = kds->pInit;
 
   if(bSmbh) 
     {
-
+      
       for(i=0;i<3;i++) 
 	{
 	  comr[i] = (pd[0].r[i]+pd[1000001].r[i])/2.0;
 	  comv[i] = (pd[0].v[i]+pd[1000001].v[i])/2.0;
 	}
-      fprintf(stderr, "here\n");
     }
   else 
     {
@@ -494,14 +542,8 @@ struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSm
 	ps[i].v[j] -= comv[j];
       }
     }
-
-  if(kdg->bOutDiag) puts("<< kdReadTipsyCheckpoint()");
-  fflush(stdout);
-
-  return(h);
 }
 
-#endif
 
 void kdSelectInit(KD kd,int d,int k,int l,int r)
 {
@@ -963,7 +1005,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 		
 		jtot = sqrt(jx*jx+jy*jy+jz*jz);
 		currSplit = ceilf((int)nSplitting/(1.0+jtot/Lc));
-		if (currSplit < 1) fprintf(stderr,"wtf mate\n");
+		if (currSplit < 1) fprintf(stderr,"umm... strange\n");
 		//fprintf(stderr, "j = %f\ncurrSplit = %f\n", j, currSplit);
 	      }
 	    else currSplit = nSplitting;
