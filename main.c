@@ -16,7 +16,7 @@
 void usage(void)
 {
 	fprintf(stderr,"USAGE:\n");
-	fprintf(stderr,"sph_rsmpl -nSplitting <N> -radius <R> -s <nSmooth> INPUT_FILE \n");
+	fprintf(stderr,"sph_rsmpl -nSplitting <N> -radius <R> -s <nSmooth> < INPUT_FILE \n");
 	fprintf(stderr,"	 reads TIPSY standard or checkpoint file from stdin\n");
 	fprintf(stderr,"-diag : print diagnostic output\n");
 	fprintf(stderr,"-smbh : this is a run with SMBHs (applies to determining com)\n");
