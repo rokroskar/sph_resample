@@ -87,8 +87,9 @@ int main(int argc,char **argv)
 	 ** Now get the command line arguments!
 	 */
 	
-	if (argc == 1) usage();
-	
+	//	if (argc == 1) usage();
+	i=1;
+
 	while (i < argc) {
 	        if (!strcmp(argv[i],"-s")) {
 			++i;
