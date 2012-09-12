@@ -8,6 +8,7 @@
 #include <rpc/xdr.h>
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 #include "kd.h"
 #include "grav.h"
 #include "tipsydefs.h"
@@ -98,7 +99,7 @@ int kdParticleType(KD kd,int iOrder)
 	}
 
 
-int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
+struct dump kdReadTipsy(KD kdg, KD kds, KD kdd, char *filename, int bStandard, int bSmbh, int bAux)
 {
         PINIT *pg, *pd, *ps;
 	int i,j;
@@ -106,10 +107,21 @@ int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
 	struct gas_particle gp;
 	struct dark_particle dp;
 	struct star_particle sp;
+	float *fTimeForm, *fMassForm, *fTimeCoolIsOffUntil, *fNSN, *fMFracOxygen, *fMFracIron, *HI, *HeI, *HeII;
+	long *iGasOrder;
 	XDR xdrs;
-
+	FILE *fp;
+	
 	if (kdg->bOutDiag) puts(">> kdReadTipsy()");
 	fflush(stdout);
+	
+	if(fp = fopen(filename,"r"));
+	else {
+	  fprintf(stderr, "file \'%s\' not found - exiting promptly\n", filename);
+	  exit(-1);
+	}
+	   
+
 	if (bStandard) {
 	    assert(sizeof(Real)==sizeof(float)); /* Otherwise, this XDR stuff
 						    ain't gonna work */
@@ -180,8 +192,23 @@ int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
 	/*
 	 ** Read Stuff!
 	 */
-	//for (i=0;i<kd->nParticles;++i) {
-	// only read in the gas
+
+
+	/* Read in the auxiliary files */
+
+	if(bAux) {
+	  fTimeCoolIsOffUntil = kdReadFloatArray(filename,0,"coolontime");
+	  fTimeForm           = kdReadFloatArray(filename, 0, "timeform");
+	  fMassForm           = kdReadFloatArray(filename, 0, "massform");
+	  fNSN                = kdReadFloatArray(filename, 0, "ESNRate");
+	  fMFracOxygen        = kdReadFloatArray(filename, 0, "OxMassFrac");
+	  fMFracIron          = kdReadFloatArray(filename, 0, "FeMassFrac");
+	  iGasOrder           = kdReadLongArray(filename, 0, "igasorder");
+	  HI                  = kdReadFloatArray(filename, 0, "HI");
+	  HeI                 = kdReadFloatArray(filename, 0, "HeI");
+	  HeII                = kdReadFloatArray(filename, 0, "HeII");
+	}
+	  
 	for(i=0;i<kdg->nParticles;i++){
 	  pg[i].iOrder = i;
 	  pg[i].fDensity = 0.0;
@@ -201,6 +228,16 @@ int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
 	    pg[i].v[j] = gp.vel[j];
 	  }
 	  
+	  if(bAux) {
+	    pg[i].fTimeCoolIsOffUntil = fTimeCoolIsOffUntil[i];
+	    pg[i].fNSN                = fNSN[i];
+	    pg[i].fMFracOxygen        = fMFracOxygen[i];
+	    pg[i].fMFracIron          = fMFracIron[i];
+	    pg[i].iGasOrder           = iGasOrder[i];
+	    pg[i].CoolParticle.Y_HI   = HI[i];
+	    pg[i].CoolParticle.Y_HeI  = HeI[i];
+	    pg[i].CoolParticle.Y_HeII = HeII[i];
+	  }
 	}
 
 	for(i=0;i<kdd->nParticles;i++){
@@ -231,23 +268,94 @@ int kdReadTipsy(KD kdg, KD kds, KD kdd, FILE *fp, int bStandard, int bSmbh)
 	  ps[i].fMass = sp.mass;
 	  ps[i].fSoft = sp.eps;
 	  ps[i].fTemp = 0.0;
+	  ps[i].fMetals = sp.metals;
+	  ps[i].fTimeForm = sp.tform;
 	  for (j=0;j<3;++j) {
 	    ps[i].r[j] = sp.pos[j];
 	    ps[i].v[j] = sp.vel[j];
 	  }
+	  
 	}
 	
 	if (bStandard) xdr_destroy(&xdrs);
 	
+	
+	
+	
+
 	kdcofm(kdg, kdd, kds, bSmbh);
 	
 	if (kdg->bOutDiag) puts("<< kdReadTipsy()");
 	fflush(stdout);
-	return(kdg->nParticles);
+	fclose(fp);
+	return h;
 }
 
+float *kdReadFloatArray(char *filename, int bAscii, char *arrayName)
+// Reads a tipsy array file
+{
+  XDR xdrs;
+  FILE *fp;
+  long np;
+  float *arr, temp;
+  int i;
+  char arrFile[256];
 
-struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSmbh)
+  strcpy(arrFile, filename);
+  strcat(arrFile, ".");
+  strcat(arrFile, arrayName);
+
+  fprintf(stderr, "array = %s\n", arrFile);
+
+  if (!bAscii) {
+    assert(sizeof(Real)==sizeof(float)); /* Otherwise, this XDR stuff
+					    ain't gonna work */
+    
+    fp = fopen(arrFile, "r");
+    xdrstdio_create(&xdrs, fp, XDR_DECODE);
+    xdr_long(&xdrs, &np);
+    arr = malloc(sizeof(float)*np);
+    for(i=0;i<np;i++) xdr_float(&xdrs,&temp);
+  }
+  fclose(fp);
+  
+  return arr; 
+}
+
+long *kdReadLongArray(char *filename, int bAscii, char *arrayName)
+// Reads a tipsy array file
+{
+  XDR xdrs;
+  FILE *fp;
+  long np;
+  long *arr, temp;
+  int i;
+  char arrFile[256];
+
+  strcpy(arrFile, filename);
+  strcat(arrFile, ".");
+  strcat(arrFile, arrayName);
+
+  fprintf(stderr, "array = %s\n", arrFile);
+
+  if (!bAscii) {
+    assert(sizeof(Real)==sizeof(float)); /* Otherwise, this XDR stuff
+					    ain't gonna work */
+    
+    fp = fopen(arrFile, "r");
+    xdrstdio_create(&xdrs, fp, XDR_DECODE);
+    xdr_long(&xdrs, &np);
+    arr = malloc(sizeof(float)*np);
+    for(i=0;i<np;i++) xdr_long(&xdrs,&temp);
+  }
+  fclose(fp);
+  
+  return arr; 
+}
+    
+
+
+struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, char *filename, int bSmbh)
 {
 
   PINIT *pg, *ps, *pd;
@@ -256,7 +364,7 @@ struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSm
   int i,j;
   long offset;
   char name[100],fdlname[500],c[10000];
-  FILE *IN, *FDL, *OUT;
+  FILE *IN, *FDL, *OUT, *fp;
  
   
   if (kdg->bOutDiag) puts(">> kdReadTipsyCheckpoint()");
@@ -272,18 +380,21 @@ struct chkHeader kdReadTipsyCheckpoint(KD kdg, KD kds, KD kdd, FILE *fp, int bSm
     return;
   }
 
+  fp = fopen(filename, "r");
 
   while(!feof(FDL)) {
     fread(&c[0],sizeof(char),1,FDL);
-    fscanf(fp,"%c",&c[0]);    
+    fscanf(fp,"%c",&c[0]);
   }
 
   fseek(fp,-2,SEEK_CUR);
  
   fread(&h,sizeof(CHK_HEADER),1,fp);
 
+  fprintf(stderr, "Output time = %f\n", h.current_time);
   fprintf(stderr, "max order = %d\nmax gas order = %d\nmax dark order = %d\n", 
 	  h.max_order, h.max_order_gas, h.max_order_dark);
+
 
   /* 
   ** Initialize and allocate arrays for the gas kd
@@ -480,11 +591,36 @@ void kdcofm(KD kdg, KD kdd, KD kds, int bSmbh)
   if(bSmbh) 
     {
       
-      for(i=0;i<3;i++) 
+      /*for(i=0;i<3;i++) 
 	{
 	  comr[i] = (pd[0].r[i]+pd[1000001].r[i])/2.0;
 	  comv[i] = (pd[0].v[i]+pd[1000001].v[i])/2.0;
 	}
+      */
+      // set the cofm by hand
+      comr[0] = 1.38185727;
+      comr[1] = -2.50419233;
+      comr[2] = -0.15508558;
+      comv[0] = -0.64014463;
+      comv[1] = -0.67666935;
+      comv[2] = 0.77240984;
+      
+
+      // set the locations and velocities of SMBHs by hand to match the cofm pos/vel of progenitors
+
+      pd[0].r[0] = -0.99154286; 
+      pd[0].r[1] = -4.98014241;
+      pd[0].r[2] = -0.19191479;
+      pd[1000001].r[0] = 3.65599845;
+      pd[1000001].r[1] = -0.13178999;
+      pd[1000001].r[2] = -0.11979661;
+
+      pd[0].v[0] = 203.81394998;
+      pd[0].v[1] = 24.8927977;
+      pd[0].v[2] = 0.81545728;
+      pd[1000001].v[0] = -196.54367953;
+      pd[1000001].v[1] = -25.17678508;
+      pd[1000001].v[2] = 0.73116272;
     }
   else 
     {
@@ -542,6 +678,8 @@ void kdcofm(KD kdg, KD kdd, KD kds, int bSmbh)
 	ps[i].v[j] -= comv[j];
       }
     }
+
+    
 }
 
 
@@ -888,12 +1026,10 @@ int ScatterCriterion(KD kd, int pi, float radius)
   switch (kd->inType)
     {
     case (DARK):
-      if(dr2 <= radius*radius)
-	return(1);
-      else 
-	return(0);
-    case (GAS):
-	return(1);
+      if(dr2 <= radius*radius) return(1);
+      else return(0);
+    case (GAS): 
+      return(1);
     case (STAR):
       if(kd->pInit[pi].fTimeForm >= 0.0) return(1);
       else return(0);
@@ -902,7 +1038,7 @@ int ScatterCriterion(KD kd, int pi, float radius)
 
 
 
-int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius,
+int kdInitResample(KD kd, int nSplitting, int offset, float radius,
 		   float Lc, float alpha)
 {
   /* 
@@ -1027,7 +1163,7 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 		    pm[nCnt].v[2] = p[pi].v[2];
 		    
 		    pm[nCnt].fMass = p[pi].fMass/(float)currSplit;
-		    pm[nCnt].fSoft = p[pi].fSoft/sqrt(currSplit);
+		    pm[nCnt].fSoft = p[pi].fSoft/cbrt(currSplit);
 		    assert(pm[nCnt].fSoft != 0.0);
 		    pm[nCnt].iOrder = nCnt + offset;
 		    		    
@@ -1049,11 +1185,6 @@ int kdInitResample(KD kd, int nSplitting, int offset, int do_stars, float radius
 		    pm[nCnt].CoolParticle.Y_HI = p[pi].CoolParticle.Y_HI;
 		    pm[nCnt].CoolParticle.Y_HeI = p[pi].CoolParticle.Y_HeI;
 		    pm[nCnt].CoolParticle.Y_HeII = p[pi].CoolParticle.Y_HeII;
-		    
-
-		    pm[nCnt].CoolParticle.Y_HI = 0.75;
-		    pm[nCnt].CoolParticle.Y_HeI = 0.0625;
-		    pm[nCnt].CoolParticle.Y_HeII = 0.0;
 
 		    pm[nCnt].fTimeCoolIsOffUntil = p[pi].fTimeCoolIsOffUntil;
 		    pm[nCnt].fTimeForm = p[pi].fTimeForm;
@@ -1348,12 +1479,14 @@ void kdWriteTipsyStd(KD kdg, KD kdd, KD kds, char *outFile, float radius, int nS
   
   // how many old non-split dark particles
   pd = kdd->pInit;
-  for (pi=0;pi<kdd->nParticles;pi++) 
-    {
-      if(((pd[pi].r[0]*pd[pi].r[0] + pd[pi].r[1]*pd[pi].r[1] + pd[pi].r[2]*pd[pi].r[2])
-	  < radius*radius))
-	olddark++;
-    }
+  /* for (pi=0;pi<kdd->nParticles;pi++)  */
+/*     { */
+/*       if(((pd[pi].r[0]*pd[pi].r[0] + pd[pi].r[1]*pd[pi].r[1] + pd[pi].r[2]*pd[pi].r[2]) */
+/* 	  < radius*radius)) */
+/* 	olddark++; */
+/*     } */
+
+  olddark = kdd->nInitActive;
 
   fprintf(stderr, "olddark in writetipsy = %d\n", olddark);
 
@@ -1402,12 +1535,14 @@ void kdWriteTipsyStd(KD kdg, KD kdd, KD kds, char *outFile, float radius, int nS
   ** so use only the pInit array
   */
 
-  for (i=0;i<kdd->nParticles;i++) {
+  
+
+  for (i=0;i<kdd->nInitActive;i++) {
     xcurr = pd[i].r[0];
     ycurr = pd[i].r[1];
     zcurr = pd[i].r[2];
     
-    if((xcurr*xcurr + ycurr*ycurr + zcurr*zcurr) < radius*radius)
+    if((xcurr*xcurr + ycurr*ycurr + zcurr*zcurr) <= radius*radius)
       {
 	for (j=0;j<3;j++) {
 	  dark.pos[j] = kdd->pInit[i].r[j];
@@ -1418,10 +1553,9 @@ void kdWriteTipsyStd(KD kdg, KD kdd, KD kds, char *outFile, float radius, int nS
 	dark.eps = kdd->pInit[i].fSoft;
 	dark.phi = 0.0;
 	
-	if (i == 0 || i == 1000001) dark.eps = kdd->pInit[i].fSoft/sqrt(nSplitting);
-	
 	xdr_dark(&xdrs, &dark);
       }
+    else fprintf(stderr, "erm... DARK PARTICLE OUTSIDE RADIUS! \n", (xcurr*xcurr + ycurr*ycurr + zcurr*zcurr));
   }
 
   /* 
@@ -1508,7 +1642,6 @@ void kdWriteTipsyCheckpoint(KD kdg, KD kdd, KD kds, CHK_HEADER header,
 	oldstar++;
     }
   
-  
   header.number_of_gas_particles = kdg->nMove;
   header.number_of_dark_particles = olddark;
   header.number_of_star_particles = kds->nMove+oldstar;
@@ -1530,6 +1663,7 @@ void kdWriteTipsyCheckpoint(KD kdg, KD kdd, KD kds, CHK_HEADER header,
 
   cp = (CHK_PART *)malloc(sizeof(CHK_PART)*header.number_of_particles);
 
+  fprintf(stderr, "header.number_of_particles = %d\n", header.number_of_particles);
 
   fprintf(stderr, "size of cp = %d, size of chkpart = %d size of chkheader = %d\n", 
 	  sizeof(cp), sizeof(CHK_PART), sizeof(CHK_HEADER));
@@ -1540,6 +1674,8 @@ void kdWriteTipsyCheckpoint(KD kdg, KD kdd, KD kds, CHK_HEADER header,
 
   for (i=0;i<header.number_of_gas_particles;i++)
     {
+      if (i<10) fprintf(stderr, "%f\n", kdg->pMove[i].fMass);
+      assert(kdg->pMove[i].fMass > 0);
       kdWriteMovedParticle(cp, cp_ind, kdg->pMove[i]);
       cp_ind++;
     }
@@ -1661,4 +1797,25 @@ void kdWriteInitParticle(CHK_PART *cp, int i, PINIT pi)
   cp[i].fMFracOxygen = pi.fMFracOxygen;
   cp[i].fMFracIron = pi.fMFracIron;
   cp[i].iGasOrder = pi.iGasOrder;
+}
+
+void kdSmbhSoft(KD kd, int nSplitting)
+{
+  
+  int i;
+  double max_mass;
+  
+  // smbh particles are ones with the largest mass
+  max_mass = kd->pInit[0].fMass;
+  for (i=0;i<kd->nParticles;i++) {
+    if (max_mass < kd->pInit[i].fMass) {
+      max_mass = kd->pInit[i].fMass;
+    }
+  }
+  
+  fprintf(stderr, "MAX MASS = %f\n", max_mass);
+  for (i=0;i<kd->nParticles;i++) 
+    if(kd->pInit[i].fMass == max_mass) 
+      kd->pInit[i].fSoft = kd->pInit[i].fSoft/cbrt((double)nSplitting);
+    
 }

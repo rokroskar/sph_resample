@@ -3,6 +3,7 @@
 
 #include "cosmo.h"
 
+
 #define ROOT		1
 #define LOWER(i)	(i<<1)
 #define UPPER(i)	((i<<1)+1)
@@ -458,13 +459,13 @@ int kdInit(KD *,int,float *,float *,int);
 void kdSetSoft(KD,float);
 void kdSetUniverse(KD,float,float,float,float,float,float);
 int kdParticleType(KD,int);
-struct chkHeader kdReadTipsyCheckpoint(KD, KD, KD, FILE *, int);
+struct chkHeader kdReadTipsyCheckpoint(KD, KD, KD, char *, int);
 void kdcofm(KD, KD, KD, int);
-int kdReadTipsy(KD, KD, KD, FILE *,int,int);
+struct dump kdReadTipsy(KD, KD, KD, char *,int,int,int);
 int kdBuildTree(KD);
 int kdBuildMoveTree(KD);
 int kdInitMove(KD,float,float,float,float,int,int);
-int kdInitResample(KD, int, int, int, float, float, float);
+int kdInitResample(KD, int, int, float, float, float);
 int kdScatterActive(KD,float);
 int bAllowInitialCut(KD);
 void kdMoveParticles(KD,float);
@@ -490,6 +491,8 @@ void kdWriteTipsyCheckpoint(KD, KD, KD, struct chkHeader, char *, float);
 void kdSetIord(KD, KD, KD, float);
 void kdWriteMovedParticle(CHK_PART *, int, PMOVE);
 void kdWriteInitParticle(CHK_PART *, int, PINIT);
+float *kdReadFloatArray(char *, int, char *);
+long *kdReadLongArray(char *, int, char *);
 
 #endif
 
