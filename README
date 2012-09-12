@@ -1,80 +1,30 @@
+----------------------------------------------------------------------
+
+SPH_RSMPL
+
+Rok Roskar
+University of Zurich
+2009/2012
 
 
-				SKID (Spline Kernel Interpolative Denmax)
-					
-							VERSION 1.4.1
+sph_rsmpl resamples a gasoline output by either selecting particles in
+a sphere or based on their angular momentum. It is meant for
+simulations that require an increase in their dynamic range to model
+the small scales involed (i.e. black hole mergers). Care must be taken
+to cut-out a large enough volume such that the possible edge effects
+resulting from the resampling will not be felt in the ``interesting''
+part of the simulation. 
 
-
-				A Group Finder for N-body Simulations
-
-				Stadel Release 1.4.1: Dec. 2000
-
-Changes from v1.1:
-	o 	Fixed bug in tree building, this bug only affected cases where
-		a very small "bucket" size was chosen and the number of particles
-		was not a power of two.
-
-Changes from v1.2:
-	o	Added ability to handle moving both gas and dark particles since
-		there seem to be situations where this is quite interesting.
-	o	The -unbind option now works completely self consistently. It will
-		now grab both the .grp and .gtp files, thereby getting the correct
-		group center. If no .gtp file is present (as is the case when using 
-		FOF) unbinding will calculate the group center to be the center of
-		mass. This was somewhat of a disturbing problem in the past.
-	o	No change log would be complete without this: enhanced performance.
-		Tree searching has been improved so that moving particles is more 
-		efficient. A "heuristic" algorithm is employed, by default, to remove
-		scatterers which makes a big difference in the speed of the code.
-		I add a conservative warning to this though, run a test case disabling
-		the fancy remove scatterers algorithm first (-nsp) as a comparison.
-		The reason for this is because we know this should usually be a good 
-		technique, but we cannot prove that it will always be correct.
-
-Changes from v1.3:
-	o	Code is now much more modular and handles Lambda cosmologies.
-	o	Standard TIPSY binaries are now used with the -std flag.
-
-Version 1.4.1:
-	o	Bug fix: don't set minimum scattering radius to fCvg. This
-		is a very bad idea and leads to extremely bad performance 
-		with large tau parameter. It is also not well motivated.
-
-Included are:
-	Makefile
-	main.c
-	kd.c
-	kd.h
-	grav.c
-	grav.h
-	smooth1.c
-	smooth1.h
-	tipsydefs.h
-	totipnat.c
-	dark.std
-	demo
-	man1/skid.1
-
-For detailed information read the man page (either cat1/skid.1 or
-man1/skid.1). A small demo of a 32768 particle input file has 
-been included, just type demo after building skid. The demo input
-is in the XDR standard binary format and is converted to a NATIVE
-tipsy binary file by totipnat. The program totipnat is one of several
-file conversion and other tools in a package called tipsy_tools which
-is part of the TIPSY distribution.
 
 To build:
 
-	> make
+   > make 
 
-To run the demo:
+For usage info run sph_rsmpl without any arguments.
 
-	> demo
+contact: 
 
-To get further information contact:
-
-	stadel@astro.washington.edu
-
+roskar@physik.uzh.ch
 
 
 
