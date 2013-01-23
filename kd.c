@@ -206,7 +206,7 @@ struct dump kdReadTipsy(KD kdg, KD kds, KD kdd, char *filename, int bStandard, i
 	  iGasOrder           = kdReadLongArray(filename, 0, "igasorder");
 	  HI                  = kdReadFloatArray(filename, 0, "HI");
 	  HeI                 = kdReadFloatArray(filename, 0, "HeI");
-	  HeII                = kdReadFloatArray(filename, 0, "HeII");
+          HeII                = kdReadFloatArray(filename, 0, "HeII");
 	}
 	  
 	for(i=0;i<kdg->nParticles;i++){
