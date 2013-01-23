@@ -11,13 +11,14 @@ CC=gcc
 CFLAGS = -g 
 LIBS	=   -lm
 
-default: sph_rsmpl 
+default: sph_resample 
 
 clean:
 	rm -f *.o
+	rm sph_resample
 
-sph_rsmpl: main.o kd.o smooth1.o 
-	$(CC) $(CFLAGS) -o sph_rsmpl main.o kd.o smooth1.o $(LIBS)
+sph_resample: main.o kd.o smooth1.o 
+	$(CC) $(CFLAGS) -o sph_resample main.o kd.o smooth1.o $(LIBS)
 
 main.o: main.c kd.h smooth1.h 
 
