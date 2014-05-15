@@ -25,5 +25,5 @@ contact:
 
 roskar@physik.uzh.ch
 
-https://zenodo.org/badge/3796/rokroskar/sph_resample.png
+![doi](https://zenodo.org/badge/3796/rokroskar/sph_resample.png)
 
