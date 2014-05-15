@@ -1,6 +1,5 @@
-----------------------------------------------------------------------
-
 SPH_RESAMPLE
+============
 
 Rok Roskar
 University of Zurich
@@ -26,5 +25,5 @@ contact:
 
 roskar@physik.uzh.ch
 
-
+https://zenodo.org/badge/3796/rokroskar/sph_resample.png
 
